@@ -2,14 +2,22 @@
 import {Browser, Builder} from "selenium-webdriver";
 import {By, until} from "selenium-webdriver";
 import "dotenv/config";
+import {readFileSync, existsSync} from "fs";
 
 
 const homeurl = "https://app.myflexlearning.com/home";
 const loginurl = "https://app.myflexlearning.com/login";
+
 let email = process.env.EMAIL;
 let password = process.env.PASSWORD;
+let config = null;
+
+if (existsSync("manifest.json")) {
+    config = JSON.parse(readFileSync("manifest.json"));
+}
 
 let driver = await new Builder().forBrowser(Browser.CHROME).build();
+
 
 async function main(driver) {
     //Navigate to myflex page
@@ -24,7 +32,7 @@ async function main(driver) {
         }
     }
 
-
+    await homepage(driver);
 
 
     console.log("End of Program. Quitting in 5 seconds."); //Quit after program ends.
@@ -86,7 +94,7 @@ async function login(driver) {
         console.log("Existing google accounts");
 
         await driver.wait(until.elementLocated(By.css("ul"))); //Find the ordered list of availiable accounts
-        let matches = await driver.findElements(By.css('*[data-identifier="'+By.escapeCss(email)+'"]')); //Locate elements associated with the school google account
+        let matches = await driver.findElements(By.css('*[data-identifier="'+email+'"]')); //Locate elements associated with the school google account
         if (matches.length > 0) { //Check if elements have been found
             //If some have been found, then
             //School account already signed in (Session may be expired)
@@ -111,8 +119,8 @@ async function login(driver) {
             }
         } else {
             //School account not present (other accounts are)
-            await driver.wait(until.elementLocated(By.xpath("//div[contains(., '"+By.escapeCss("Use another account")+"')]"))) //Wait until "Use another account" button located
-            await driver.findElement(By.xpath("//div[contains(., '"+By.escapeCss("Use another account")+"')]")).click(); //Locate and click "Use another account" button
+            await driver.wait(until.elementLocated(By.xpath("//div[contains(., '"+"Use another account"+"')]"))) //Wait until "Use another account" button located
+            await driver.findElement(By.xpath("//div[contains(., '"+"Use another account"+"')]")).click(); //Locate and click "Use another account" button
             console.log("Clicked use another account");
 
             await googleSignIn(driver); //Handle sign in
@@ -131,4 +139,81 @@ async function login(driver) {
     }
 }
 
-main(driver)
+async function homepage(driver) {
+    console.log("Navigating homepage");
+    await driver.wait(until.elementLocated(By.css('*[routerlink="/calendar"]')));
+    let calendarButton = await driver.findElement(By.css('*[routerlink="/calendar"]'));
+    await driver.wait(until.elementIsEnabled(calendarButton));
+    await calendarButton.click();
+    console.log("Clicked calendarButton");
+
+    let st = await driver.wait(until.elementLocated(By.className("loading-indicator")), 2000);
+    if (st != "timed-out") { 
+        await driver.wait(async () => {
+            let elements = await driver.findElements(By.className("loading-indicator"));
+            return elements == 0;
+        });
+    }
+
+    await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Week"+"')]")));
+    let weekButton = await driver.findElement(By.xpath("//span[contains(., '"+"Week"+"')]"));
+    await driver.wait(until.elementIsEnabled(weekButton));
+    await weekButton.findElement(By.xpath("..")).click();
+    console.log("Clicked WeekButton");
+
+    await week(driver);
+}
+
+async function week(driver) {
+    console.log("Navigating week")
+    let events = await driver.findElements(By.className("event-details"));
+    if (events.length <= 0) {
+        console.log("No blocks this week");
+        return -1;
+    }
+    let result = 0;
+    console.log("Looping blocks");
+    for (let i = 0; i < events.length; i++) {
+        let eventName = await events[i].findElement(By.className("class-title")).getText();
+        if (eventName == config.eventTitle) {
+            let cycleDay = await events[i].findElement(By.className("cycle-day")).getText();
+            await events[i].click();
+            result = result + await changeClass(driver, cycleDay);
+        }
+    }
+}
+
+async function changeClass(driver, day) {
+    let status = await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Class"+"')]")), 5000);
+    if (status == "timed-out") return 1;
+    let changeButton = await driver.findElement(By.xpath("//span[contains(., '"+"Change Class"+"')]"));
+    await driver.wait(until.elementIsEnabled(changeButton));
+    await changeButton.click();
+    await blockSignup();
+    return 0;
+}
+
+async function blockSignup(driver, day) {
+    await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")));
+    let searchBox = await driver.findElement(By.name("search"));
+    await driver.wait(until.elementIsEnabled(searchBox));
+    await searchBox.sendKeys(config.agenda[day].query);
+    setTimeout(async function () {
+        let table = await driver.findElement(By.className("table-section"));
+        let rows = await table.findElements(By.css("mat-row"));
+        for (let i = 0; i < rows.length; i++) {
+            let blockName = await rows[i].findElement(By.className("mat-column-name")).getText();
+            if (blockName.contains(config.agenda[day].name)) {
+                await rows[i].findElement(By.css("mat-radio-button")).click();
+                await driver.findElement(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")).click();
+                return;
+            }
+        }
+    }, 2000);
+}
+
+if (config != null) {
+    main(driver)
+} else {
+    console.log("Missing manifest.json file")
+}
