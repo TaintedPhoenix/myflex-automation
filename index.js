@@ -103,10 +103,11 @@ async function login(driver) {
     }
     await driver.switchTo().window(windows[0]);
     console.log("Swapped back to original window");
-    await driver.wait(until.urlIs(homeurl), 2500);
+    await driver.wait(until.urlIs(homeurl), 10000);
     let currentUrl = await driver.getCurrentUrl();
     if (currentUrl == homeurl) {
-        console.log("Logged in successfully");
+        console.log("Login successful.")
+        return true;
     } else {
         console.log("Login failed.");
     }
