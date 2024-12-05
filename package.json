@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "selenium-webdriver": "^4.27.0"
+  },
+  "type": "module"
+}
