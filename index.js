@@ -184,13 +184,22 @@ async function week(driver) {
         let idSplit = id.split("-");
         days.push(idSplit[idSplit.length-1]);
     }
+    console.log("Days length:", days.length);
     for (let i = 0; i < days.length; i++) {
-        let event = await driver.findElement(By.xpath("//*[substring(@id, string-length(@id) - "+days[i].length+") = '-"+days[i]+"']"));
-        let eventName = await event.findElement(By.className("class-title")).getText();
+        console.log("i=", i);
+        let eventParent = await driver.findElement(By.xpath("//*[substring(@id, string-length(@id) - "+days[i].length+") = '-"+days[i]+"']"));
+        let event = await eventParent.findElement(By.className("event-details"));
+        let eventNameElement = await event.findElement(By.className("class-title"));
+        let eventName = await eventNameElement.getText();
+        console.log("EventName=", eventName);
         if (eventName == config.eventTitle) {
             let cycleDay = await event.findElement(By.className("cycle-day")).getText();
-            await event.click();
+            await eventNameElement.click();
             result = result + await changeClass(driver, cycleDay); //May need a sleep here if this breaks
+            await driver.wait(async () => {
+                let elements = await driver.findElements(By.className("loading-indicator"));
+                return elements == 0;
+            });
             await sleep(1500);
         }
     }
@@ -231,52 +240,90 @@ async function selectRow(driver, rowElement) {
     return;
 }
 
+async function blocksList(driver, rows, cName, compare) {
+    console.log("Checking block list")
+    for (let i = 0; i < rows.length; i++) {
+        try {
+            let blockName = await rows[i].findElement(By.className(cName)).getText();
+            console.log("Found: " + blockName + " Searching for: " + compare);
+            if (blockName.includes(compare)) {
+                await selectRow(driver, rows[i]);
+                return 1;
+            }
+        } catch (err) {
+            if (err.name == 'StaleElementReferenceError') {
+                console.log("Navigation WARN: Stale element in block list. Retrying...")
+                return -1;
+            } else {
+                throw(err);
+            }
+        }
+    }
+    return 0;
+}
+
 async function blockSignup(driver, day) {
     await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")));
     let searchBox = await driver.findElement(By.name("search"));
     await driver.wait(until.elementIsEnabled(searchBox));
-    await searchBox.sendKeys(config.agenda[day].query); 
-    await sleep(200);
+    await driver.wait(until.elementLocated(By.css("mat-row")));
+    let stales = (await (await driver.findElement(By.className("table-section"))).findElements(By.css("mat-row")));
+    let staleNames = [];
+    await stales.forEach(async element => {
+        staleNames.push(await (await element.findElement(By.className("mat-column-name"))).getText());
+    })
+    await searchBox.sendKeys(config.agenda[day].query);
     await driver.wait(async () => {
         let elements = await driver.findElements(By.className("loading-indicator"));
         return elements == 0;
     });
-    await sleep(1200);
-    for (let i = 0; i < 2; i++) { //Check twice to remove a specific race condition error (reason for the sleep above)
-        let table = await driver.findElement(By.className("table-section"));
-        let rows = await table.findElements(By.css("mat-row"));
-        if (config.agenda[day].hasOwnProperty("name")) {
-            console.log("Checking by name")
-            for (let i = 0; i < rows.length; i++) {
-                let blockName = await rows[i].findElement(By.className("mat-column-name")).getText();
-                console.log("Foundname: " + blockName + " Searching for: " + config.agenda[day].name);
-                if (blockName.includes(config.agenda[day].name)) {
-                    await selectRow(driver, rows[i]);
-                    return;
+    console.log(staleNames.sort().join());
+    await driver.wait(async () => {
+        let stales2 = (await (await driver.findElement(By.className("table-section"))).findElements(By.css("mat-row")));
+        let staleNames2 = [];
+        await stales2.forEach(async element2 => {
+            staleNames2.push(await (await element2.findElement(By.className("mat-column-name"))).getText());
+        })
+        return !(staleNames.sort().join() == staleNames2.sort().join());
+    }, 6000);
+
+    let rows = [];
+    let c = -1
+    for (let i = 0; i < 3 && c < 20; i++) { //Check twice to remove a specific race condition error (reason for the sleep above)
+        c++;
+        console.log("BlockCheckLoop i=", i);
+        if (c > 0 && rows.length > 0) {
+            console.log("Waiting for rows to be renewed")
+            await driver.wait(async () => {
+                try {
+                    await rows[0].getTagName();
+                    return false;
+                } catch (err) {
+                    return true;
                 }
-            }
+            }, 5000).then(console.log("Done waiting for rows"));
+            await sleep(300);
+        }
+        if (c > 1) {
+            await sleep(3000);
+        }
+        let table = await driver.findElement(By.className("table-section"));
+        rows = null;
+        rows = await table.findElements(By.css("mat-row"));
+        if (config.agenda[day].hasOwnProperty("name")) {
+            let r = await blocksList(driver, rows, "mat-column-name", config.agenda[day].name);
+            if (r == -1) i--;
+            else if (r == 1) return;
         }
         if (config.agenda[day].hasOwnProperty("teacher")) {
-            console.log("Checking by teacher");
-            for (let i = 0; i < rows.length; i++) {
-                let teacherName = await rows[i].findElement(By.className("mat-column-teacher")).getText();
-                console.log("Foundteacher: " + teacherName + " Searching for: " + config.agenda[day].teacher);
-                if (teacherName.includes(config.agenda[day].teacher)) {
-                    await selectRow(driver, rows[i]);
-                    return;
-                }
-            }
+            let r = await blocksList(driver, rows, "mat-column-teacher", config.agenda[day].teacher);
+            if (r == -1) i--;
+            else if (r == 1) return;
         }
         if (config.agenda[day].hasOwnProperty("room")) {
-            console.log("Checking by room");
-            for (let i = 0; i < rows.length; i++) {
-                let roomName = await rows[i].findElement(By.className("mat-column-room")).getText();
-                console.log("Foundroom: " + roomName + " Searching for: " + config.agenda[day].room);
-                if (roomName.includes(config.agenda[day].room)) {
-                    await selectRow(driver, rows[i]);
-                    return;
-                }
-            }
+            let r = await blocksList(driver, rows, "mat-column-room", config.agenda[day].room);
+            if (r == -1) i--;
+            else if (r == 1) return;
         }
     }
     //No matching blocks found, Error handling
