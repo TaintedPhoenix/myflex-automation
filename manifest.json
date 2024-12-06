@@ -1,17 +1,5 @@
 {
+    "interval" : 86400000,
     "eventTitle" : "I Block",
-    "agenda" : {
-        "3" : {
-            "query" : "Tadeu",
-            "name" : "Tadeu"
-        },
-        "5" : {
-            "query" : "Tadeu",
-            "name" : "Tadeu"
-        },
-        "6" : {
-            "query" : "Tadeu",
-            "name" : "VGCUSA"
-        }
-    }
+    "agenda" : {}
 }

@@ -7,6 +7,7 @@ import {readFileSync, existsSync} from "fs";
 
 const homeurl = "https://app.myflexlearning.com/home";
 const loginurl = "https://app.myflexlearning.com/login";
+const calendarurl = "https://app.myflexlearning.com/calendar";
 
 let email = process.env.EMAIL;
 let password = process.env.PASSWORD;
@@ -14,31 +15,6 @@ let config = null;
 
 if (existsSync("manifest.json")) {
     config = JSON.parse(readFileSync("manifest.json"));
-}
-
-let driver = await new Builder().forBrowser(Browser.CHROME).build();
-
-
-async function main(driver) {
-    //Navigate to myflex page
-    await driver.get(homeurl);
-    let currentURL = await driver.getCurrentUrl();
-    if (currentURL == loginurl) { //Assess whether login is required (it almost always is)
-        console.log("IsLogin");
-        if (await login(driver) == false) { //Attempt a login
-            console.log("Login failed. Quitting.")
-            await driver.quit(); //If login fails, quit 
-            return;
-        }
-    }
-
-    await homepage(driver);
-
-
-    console.log("End of Program. Quitting in 5 seconds."); //Quit after program ends.
-    setTimeout(async function (){
-        await driver.quit();
-    }, 5000);
 }
 
 async function googleSignIn(driver) { //Navigate the google sign in popup (Username/Email section then Password Section)
@@ -57,6 +33,7 @@ async function googlePw(driver) { //Navigate the google sign in popup (Password 
     await driver.wait(until.elementLocated(By.name("Passwd"))); //Wait until password box is found
     let pwElement = await driver.findElement(By.name("Passwd")); //Locate the password box
     await driver.wait(until.elementIsEnabled(pwElement)); //Wait until the password box is interactable 
+    await sleep(400);
     await pwElement.sendKeys(password); //Input password into password box
     console.log("Entered password"); 
 
@@ -134,7 +111,6 @@ async function login(driver) {
         console.log("Login successful.");
         return true;
     } else {
-        console.log("Login failed.");
         return false;
     }
 }
@@ -146,7 +122,16 @@ async function homepage(driver) {
     await driver.wait(until.elementIsEnabled(calendarButton));
     await calendarButton.click();
     console.log("Clicked calendarButton");
+    await calendarPage(driver);  
+    return;  
+}
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function calendarPage(driver) {
+    try {
     let st = await driver.wait(until.elementLocated(By.className("loading-indicator")), 2000);
     if (st != "timed-out") { 
         await driver.wait(async () => {
@@ -154,66 +139,226 @@ async function homepage(driver) {
             return elements == 0;
         });
     }
+    } catch (err) {}
 
     await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Week"+"')]")));
     let weekButton = await driver.findElement(By.xpath("//span[contains(., '"+"Week"+"')]"));
     await driver.wait(until.elementIsEnabled(weekButton));
     await weekButton.findElement(By.xpath("..")).click();
     console.log("Clicked WeekButton");
-
-    await week(driver);
+    
+    await driver.wait(until.elementLocated(By.className("month-header")));
+    console.log(await driver.findElement(By.className("month-header")).getText());
+    while (await week(driver) <= 0 && !((await driver.findElement(By.className("month-header")).getText()).toLowerCase().startsWith("july"))) {
+        await driver.findElement(By.className("fa-arrow-right")).click();
+        try {
+        let st = await driver.wait(until.elementLocated(By.className("loading-indicator")), 2000);
+        if (st != "timed-out") { 
+            await driver.wait(async () => {
+                let elements = await driver.findElements(By.className("loading-indicator"));
+                return elements == 0;
+            });
+        }
+        } catch (err) {}
+        await driver.wait(until.elementLocated(By.className("month-header")));
+        await sleep(500);
+    }
+    return;
 }
 
 async function week(driver) {
     console.log("Navigating week")
+    
     let events = await driver.findElements(By.className("event-details"));
     if (events.length <= 0) {
         console.log("No blocks this week");
         return -1;
     }
     let result = 0;
-    console.log("Looping blocks");
-    for (let i = 0; i < events.length; i++) {
-        let eventName = await events[i].findElement(By.className("class-title")).getText();
-        if (eventName == config.eventTitle) {
-            let cycleDay = await events[i].findElement(By.className("cycle-day")).getText();
-            await events[i].click();
-            result = result + await changeClass(driver, cycleDay);
+    console.log("Looping blocks"); //rebuild this part using the "-day" id's
+
+    for (let v = 0; v < events.length; v++) {
+        console.log("Exterior for loop triggered");
+        events = await driver.findElements(By.className("event-details"));
+        for (let i = 0; i < events.length; i++) {
+            let eventName = await events[i].findElement(By.className("class-title")).getText();
+            if (eventName == config.eventTitle) {
+                let cycleDay = await events[i].findElement(By.className("cycle-day")).getText();
+                await events[i].click();
+                let cc = await changeClass(driver, cycleDay);
+                result = result + cc
+                await sleep(2000);
+                if (result <= 0) {
+                    if (cc > 0) {
+                        let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]"))
+                        await driver.wait(until.elementIsEnabled(okElement));
+                        await okElement.click();
+                    }
+                    console.log("breaking for loop");
+                    break;
+                }
+            }
         }
     }
+
+    return result;
 }
 
 async function changeClass(driver, day) {
-    let status = await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Class"+"')]")), 5000);
-    if (status == "timed-out") return 1;
+    console.log("ChangeClass PopUp");
+    try {
+        await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Class"+"')]")), 500);
+    } catch (err) {
+        return 1;
+    }
+    
     let changeButton = await driver.findElement(By.xpath("//span[contains(., '"+"Change Class"+"')]"));
     await driver.wait(until.elementIsEnabled(changeButton));
     await changeButton.click();
-    await blockSignup();
+    await blockSignup(driver, day);
     return 0;
+}
+
+async function selectRow(driver, rowElement) {
+    console.log("Row selected");
+    await rowElement.findElement(By.css("mat-radio-button")).click();
+    await driver.findElement(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")).click();
+    await driver.wait(async () => {
+        let elements = await driver.findElements(By.className("loading-indicator"));
+        return elements == 0;
+    });
+    let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]"))
+    await driver.wait(until.elementIsEnabled(okElement));
+    await sleep(600);
+    await okElement.click();
+    return;
 }
 
 async function blockSignup(driver, day) {
     await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")));
     let searchBox = await driver.findElement(By.name("search"));
     await driver.wait(until.elementIsEnabled(searchBox));
-    await searchBox.sendKeys(config.agenda[day].query);
-    setTimeout(async function () {
+    await searchBox.sendKeys(config.agenda[day].query); 
+    await sleep(200);
+    await driver.wait(async () => {
+        let elements = await driver.findElements(By.className("loading-indicator"));
+        return elements == 0;
+    });
+    await sleep(1200);
+    for (let i = 0; i < 2; i++) { //Check twice to remove a specific race condition error (reason for the sleep above)
         let table = await driver.findElement(By.className("table-section"));
         let rows = await table.findElements(By.css("mat-row"));
-        for (let i = 0; i < rows.length; i++) {
-            let blockName = await rows[i].findElement(By.className("mat-column-name")).getText();
-            if (blockName.contains(config.agenda[day].name)) {
-                await rows[i].findElement(By.css("mat-radio-button")).click();
-                await driver.findElement(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")).click();
-                return;
+        if (config.agenda[day].hasOwnProperty("name")) {
+            console.log("Checking by name")
+            for (let i = 0; i < rows.length; i++) {
+                let blockName = await rows[i].findElement(By.className("mat-column-name")).getText();
+                console.log("Foundname: " + blockName + " Searching for: " + config.agenda[day].name);
+                if (blockName.includes(config.agenda[day].name)) {
+                    await selectRow(driver, rows[i]);
+                    return;
+                }
             }
         }
-    }, 2000);
+        if (config.agenda[day].hasOwnProperty("teacher")) {
+            console.log("Checking by teacher");
+            for (let i = 0; i < rows.length; i++) {
+                let teacherName = await rows[i].findElement(By.className("mat-column-teacher")).getText();
+                console.log("Foundteacher: " + teacherName + " Searching for: " + config.agenda[day].teacher);
+                if (teacherName.includes(config.agenda[day].teacher)) {
+                    await selectRow(driver, rows[i]);
+                    return;
+                }
+            }
+        }
+        if (config.agenda[day].hasOwnProperty("room")) {
+            console.log("Checking by room");
+            for (let i = 0; i < rows.length; i++) {
+                let roomName = await rows[i].findElement(By.className("mat-column-room")).getText();
+                console.log("Foundroom: " + roomName + " Searching for: " + config.agenda[day].room);
+                if (roomName.includes(config.agenda[day].room)) {
+                    await selectRow(driver, rows[i]);
+                    return;
+                }
+            }
+        }
+    }
+    //No matching blocks found, Error handling
+    let dayProperties = Object.keys(config.agenda[day]);
+    if (!dayProperties.includes("name") && !dayProperties.includes("teacher") && !dayProperties.includes("room")) {
+        console.error("Config ERROR: No block identifiers (name, teacher, room) found for cycle day " + String(day));
+    } else {
+        let identifiers = ""
+        for (let i = 0; i < dayProperties.length; i++) {
+            if (["name", "teacher", "room"].includes(dayProperties[i])) {
+                identifiers = identifiers + dayProperties[i] + "=" + config.agenda[day][dayProperties[i]] + ", "
+            }
+        }
+        identifiers = identifiers.substring(0, identifiers.length-2);
+        console.error("Block ERROR: No block found for cycle day "+day+" under query " + config.agenda[day].query + " with any matches to " + identifiers);
+    }
+    await driver.quit();
+    process.exit();
 }
 
+async function registerIblocks() {
+    let driver = await new Builder().forBrowser(Browser.CHROME).build();
+    await driver.get(homeurl);
+    await sleep(100);
+    let currentURL = await driver.getCurrentUrl();
+    if (currentURL == loginurl) { //Assess whether login is required (it almost always is)
+        if (await login(driver) == false) { //Attempt a login
+            console.error("Login ERROR: Login failed. Please ensure your credentials are correct.")
+            await driver.quit(); //If login fails, quit 
+            process.exit();
+        }
+    }
+    //Should be logged in and on homepage by this point
+    await homepage(driver);
+    console.log("Task Finished Successfully.");
+    await driver.quit();
+    setTimeout(async function() {
+        registerIblocks();
+    }, config.interval)
+}
+
+if (!existsSync("manifest.json")) {
+    console.error("Config ERROR: Missing `manifest.json` config file!");
+    process.exit();
+}
+
+if (config == null || !config.hasOwnProperty("interval") || !config.hasOwnProperty("eventTitle") || !config.hasOwnProperty("agenda")) {
+    let missing = "";
+    let props = ["interval", "eventTitle", "agenda"];
+    for (let i = 0; i < props.length; i++) {
+        if (config == null || !config.hasOwnProperty(props[i])) {
+            missing = missing + props[i] + ", ";
+        }
+    }
+    missing = missing.substring(0, missing.length-2);
+    console.error("Config ERROR: Missing required configuration properties in `manifest.json` " + missing);
+    process.exit();
+}
+
+if (!existsSync(".env")) {
+    console.error("Config ERROR: Missing credentials file `.env`");
+    process.exit();
+}
+
+if (process.env.PASSWORD == null || process.env.PASSWORD == "" || process.env.EMAIL == null || process.env.EMAIL == "") {
+    let missing = "";
+    if (process.env.PASSWORD == null || process.env.PASSWORD == "") {
+        missing = missing + "PASSWORD, ";
+    }
+    if (process.env.EMAIL == null || process.env.EMAIL == "") {
+        missing = missing + "EMAIL, ";
+    }
+    missing = missing.substring(0, missing.length-2);
+    console.error("Config ERROR: Missing credentials in `.env` file: " + missing);
+}
+
+
 if (config != null) {
-    main(driver)
+    registerIblocks();
 } else {
-    console.log("Missing manifest.json file")
+    console.error("Config ERROR: Missing `manifest.json` config file!")
 }
