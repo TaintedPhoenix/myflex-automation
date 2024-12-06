@@ -175,29 +175,23 @@ async function week(driver) {
         return -1;
     }
     let result = 0;
-    console.log("Looping blocks"); //rebuild this part using the "-day" id's
-
-    for (let v = 0; v < events.length; v++) {
-        console.log("Exterior for loop triggered");
-        events = await driver.findElements(By.className("event-details"));
-        for (let i = 0; i < events.length; i++) {
-            let eventName = await events[i].findElement(By.className("class-title")).getText();
-            if (eventName == config.eventTitle) {
-                let cycleDay = await events[i].findElement(By.className("cycle-day")).getText();
-                await events[i].click();
-                let cc = await changeClass(driver, cycleDay);
-                result = result + cc
-                await sleep(2000);
-                if (result <= 0) {
-                    if (cc > 0) {
-                        let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]"))
-                        await driver.wait(until.elementIsEnabled(okElement));
-                        await okElement.click();
-                    }
-                    console.log("breaking for loop");
-                    break;
-                }
-            }
+    console.log("Looping blocks");
+    let days = [];
+    for (let i = 0; i < events.length; i++) {
+        let parentElement = await events[i].findElement(By.xpath(".."));
+        let id = await parentElement.getAttribute("id");
+        console.log("Id is: '" + id + "'")
+        let idSplit = id.split("-");
+        days.push(idSplit[idSplit.length-1]);
+    }
+    for (let i = 0; i < days.length; i++) {
+        let event = await driver.findElement(By.xpath("//*[substring(@id, string-length(@id) - "+days[i].length+") = '-"+days[i]+"']"));
+        let eventName = await event.findElement(By.className("class-title")).getText();
+        if (eventName == config.eventTitle) {
+            let cycleDay = await event.findElement(By.className("cycle-day")).getText();
+            await event.click();
+            result = result + await changeClass(driver, cycleDay); //May need a sleep here if this breaks
+            await sleep(1500);
         }
     }
 
@@ -207,8 +201,11 @@ async function week(driver) {
 async function changeClass(driver, day) {
     console.log("ChangeClass PopUp");
     try {
-        await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Class"+"')]")), 500);
+        await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Class"+"')]")), 800);
     } catch (err) {
+        let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]"));
+        await driver.wait(until.elementIsEnabled(okElement));
+        await okElement.click();
         return 1;
     }
     
