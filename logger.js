@@ -32,6 +32,11 @@ class Logger {
             if (!fs.existsSync(path.join("logs"))) {
                 fs.mkdirSync(path.join("logs"));
             }
+        } else {
+            this.warn("Logger WARN: Log file set to disabled in `config.json` no log file will be created for this session", true);
+        }
+        if (!this.outputEnabled) {
+            this.warn("Logger WARN: Output set to disabled in `config.json` only critical information will be displayed. Some of Chrome's interal logs may still show", true);
         }
     }
 

@@ -1,6 +1,7 @@
 
 import {Browser, Builder} from "selenium-webdriver";
 import {By, until} from "selenium-webdriver";
+import chrome from "selenium-webdriver/chrome.js"
 import "dotenv/config";
 import fs from "fs";
 import {Logger} from "./logger.js";
@@ -348,7 +349,13 @@ async function blockSignup(driver, day) {
 }
 
 async function registerIblocks() {
-    let driver = await new Builder().forBrowser(Browser.CHROME).build();
+    let driverOptions = new chrome.Options();
+    driverOptions.setLoggingPrefs({
+        driver: 'OFF',
+        client: 'OFF',
+        server: 'OFF'
+    })
+    let driver = await new Builder().forBrowser(Browser.CHROME).setChromeOptions(driverOptions).build();
     await driver.get(homeurl);
     await sleep(100);
     let currentURL = await driver.getCurrentUrl();
@@ -361,7 +368,7 @@ async function registerIblocks() {
     }
     //Should be logged in and on homepage by this point
     await homepage(driver);
-    logger.log("Task Finished Successfully.");
+    logger.log("Enroll task finished successfully", true);
     await driver.quit();
     setTimeout(async function() {
         registerIblocks();
@@ -370,10 +377,10 @@ async function registerIblocks() {
 
 async function main() {
 
-    logger.log("Welcome to MyFlex Automation!");
+    logger.log("Welcome to MyFlex Automation!", true);
     if (fs.existsSync("package.json")) {
         let data = await JSON.parse(fs.readFileSync("package.json"));
-        logger.log(`Initializing program version ${Object.keys(data).includes("version") ? data.version : "unknown"}...\n`);
+        logger.log(`Initializing program version ${Object.keys(data).includes("version") ? data.version : "unknown"}...\n`, true);
     } else {
         logger.error("Config ERROR: Missing `package.json` package file!");
     }
