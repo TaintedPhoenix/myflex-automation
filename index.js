@@ -432,7 +432,12 @@ async function main() {
         }
     }
 
-    registerIblocks();
+    try {
+        registerIblocks();
+    } catch (err) {
+        logger.error(err);
+        process.exit('1');
+    }
 
 }
 
