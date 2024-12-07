@@ -32,6 +32,7 @@ class Logger {
             if (!fs.existsSync(path.join("logs"))) {
                 fs.mkdirSync(path.join("logs"));
             }
+            fs.writeFileSync(path.join("logs", "latest.txt"), "");
         } else {
             this.warn("Logger WARN: Log file set to disabled in `config.json` no log file will be created for this session", true);
         }
@@ -50,11 +51,13 @@ class Logger {
                 i++;
             }
             this.logFilePath = path.join("logs", pathString + ".txt");
+            fs.writeFileSync(path.join("logs", "latest.txt"), "");
         }
     }
 
     writeLog(content) {
         fs.appendFileSync(this.logFilePath, content+"\n", 'utf-8');
+        fs.appendFileSync(path.join("logs", "latest.txt"), content + "\n", 'utf-8')
     }
 
     /** 
