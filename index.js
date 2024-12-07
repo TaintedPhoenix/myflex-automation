@@ -401,6 +401,10 @@ async function main() {
         logger.error("Config ERROR: Missing required configuration properties in `config.yaml` " + missing);
         process.exit();
     }
+    if (config != null && config.hasOwnProperty("agenda") && Object.keys(config.agenda).length < 1 ) {
+        logger.error("Config ERROR: Enrollment agenda has not been set in `config.yaml`. See `README.md` for setup instructions");
+        process.exit();
+    }
 
     if (!fs.existsSync(".env")) { 
         logger.warn("Config WARN: `.env` credentials file not found. Please input your credentials", true);
