@@ -1,3 +1,1 @@
-npm start
-pause
-exit
+cmd /k npm start
