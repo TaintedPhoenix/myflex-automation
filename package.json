@@ -1,4 +1,13 @@
 {
+  "name": "myflex-automation",
+  "version": "0.1.0-alpha",
+  "description": "MyFlex enrollment automation using Selenium.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "TaintedPhoenix",
+  "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.7",
     "selenium-webdriver": "^4.27.0"

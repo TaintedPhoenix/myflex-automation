@@ -1,4 +1,6 @@
 {
+    "loggingEnabled" : true,
+    "outputEnabled" : true,
     "interval" : 86400000,
     "eventTitle" : "I Block",
     "agenda" : {}
