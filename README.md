@@ -30,7 +30,7 @@ Ensure you have downloaded the programs listed under Prerequisites. Then:
 
 The config options (including the enrollment agenda) for the program can be found in `config.json5`. Each parameter is detailed below. The default `config.json5` looks like this:
 
-```yaml
+```json5
 {
     "agenda" : {},
     "eventTitle" : "I Block",
@@ -46,7 +46,7 @@ The config options (including the enrollment agenda) for the program can be foun
 
 The most important config option is the enrollment agenda. You **must** alter this option in order for the program to function. It is an object/dictionary of members that describe what blocks the program should enroll in and when. An example member of agenda is:
 
-```yaml
+```json5
 "6" : {
     "query" : "Tadeu",
     "name" : "VGCUSA",
@@ -85,12 +85,12 @@ Sets whether or not to display non-critical messages from the program to the con
 
 This is how a fully configured `config.json5` file could look:
 
-```yaml
+```json5
 {
-    "agenda" : { #User has Flex Blocks on cycle-days "3", "5", and "6"
+    "agenda" : { //User has Flex Blocks on cycle-days "3", "5", and "6"
         "3" : {
-            "query" : "Tadeu", #Desired block can be found with query "Tadeu"
-            "teacher" : "Tadeu" #Check for desired block with teacher "Tadeu"
+            "query" : "Tadeu", //Desired block can be found with query "Tadeu"
+            "teacher" : "Tadeu" //Check for desired block with teacher "Tadeu"
         },
         "5" : {
             "query" : "Tadeu",
@@ -98,14 +98,14 @@ This is how a fully configured `config.json5` file could look:
         },
         "6" : {
             "query" : "Tadeu",
-            "name" : "VGCUSA", #Check for desired block with name "VGCUSA" first,
-            "teacher" : "Tadeu" #And if not found, check for block with teacher "Tadeu"
+            "name" : "VGCUSA", //Check for desired block with name "VGCUSA" first,
+            "teacher" : "Tadeu" //And if not found, check for block with teacher "Tadeu"
         }
     },
-    "eventTitle" : "I Block", #User's School uses title "I Block" for unscheduled blocks
-    "interval" : 86400000, #Check for newly-opened blocks every 24 hours
-    "loggingEnabled" : true, #Write program output to a log file
-    "outputEnabled" : true #Display non-critical program messages in the console 
+    "eventTitle" : "I Block", //User's School uses title "I Block" for unscheduled blocks
+    "interval" : 86400000, //Check for newly-opened blocks every 24 hours
+    "loggingEnabled" : true, //Write program output to a log file
+    "outputEnabled" : true //Display non-critical program messages in the console 
 }
 ```
 
