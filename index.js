@@ -3,8 +3,7 @@ import {Browser, Builder} from "selenium-webdriver";
 import {By, until} from "selenium-webdriver";
 import "dotenv/config";
 import fs from "fs";
-import {Logger} from "./logger.ts";
-import readline from "readline";
+import {Logger} from "./logger.js";
 
 const logger = new Logger("MyFlexAutomation");
 
@@ -187,14 +186,14 @@ async function week(driver) {
         let idSplit = id.split("-");
         days.push(idSplit[idSplit.length-1]);
     }
-    logger.log("Days length:", days.length);
+    logger.log("Days length: "+ days.length);
     for (let i = 0; i < days.length; i++) {
-        logger.log("DayLoop i=", i);
+        logger.log("DayLoop i="+ i);
         let eventParent = await driver.findElement(By.xpath("//*[substring(@id, string-length(@id) - "+days[i].length+") = '-"+days[i]+"']"));
         let event = await eventParent.findElement(By.className("event-details"));
         let eventNameElement = await event.findElement(By.className("class-title"));
         let eventName = await eventNameElement.getText();
-        logger.log("EventName=", eventName);
+        logger.log("EventName="+ eventName);
         if (eventName == config.eventTitle) {
             let cycleDay = await event.findElement(By.className("cycle-day")).getText();
             await eventNameElement.click();
@@ -294,10 +293,10 @@ async function blockSignup(driver, day) {
     let c = -1
     for (let i = 0; i < 3 && c < 20; i++) { //Check twice to remove a specific race condition error (reason for the sleep above)
         c++;
-        logger.log("BlockCheckLoop i=", i);
+        logger.log("BlockCheckLoop i="+ i);
         if (c > 0 && rows.length > 0) {
-            logger.log("[MyFlexAutomation/] ")
-            logger.log("Waiting for rows to be renewed")
+            logger.warn("Navigation WARN: Blocks list recheck triggered");
+            logger.log("Waiting for rows to be renewed");
             await driver.wait(async () => {
                 try {
                     await rows[0].getTagName();
@@ -366,14 +365,14 @@ async function registerIblocks() {
     await driver.quit();
     setTimeout(async function() {
         registerIblocks();
-    }, config.interval)
+    }, config.interval);
 }
 
-function main() {
+async function main() {
 
     logger.log("Welcome to MyFlex Automation!");
     if (fs.existsSync("package.json")) {
-        let data = JSON.parse(fs.readFileSync("package.json"));
+        let data = await JSON.parse(fs.readFileSync("package.json"));
         logger.log(`Initializing program version ${Object.keys(data).includes("version") ? data.version : "unknown"}...\n`);
     } else {
         logger.error("Config ERROR: Missing `package.json` package file!");
@@ -395,27 +394,27 @@ function main() {
         process.exit();
     }
 
-    if (!fs.existsSync(".env")) {
+    if (!fs.existsSync(".env")) { 
         logger.warn("Config WARN: `.env` credentials file not found. Please input your credentials", true);
-        email = logger.input("Email: ");
-        password = logger.input("Password: ");
+        email = await logger.input("Email: ");
+        password = await logger.input("Password: ");
         fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
         logger.log("Credentials saved to file", true);
     } else if (password == null || password == "" || email == null || email == "") {
         if ((password == null || password == "") && (email == null || email == "")) {
             logger.warn("Config WARN: Missing/Invalid credentials. Please input your credentials", true);
-            email = logger.input("Email: ");
-            password = logger.input("Password: ");
+            email = await logger.input("Email: ");
+            password = await logger.input("Password: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
             logger.log("Credentials saved to file", true);
         } else if (password == null || password == "") {
             logger.warn("Config WARN: Missing/Invalid password. Please input your password", true);
-            password = logger.input("Password: ");
+            password = await logger.input("Password: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
             logger.log("Credentials saved to file", true);
         } else {
             logger.warn("Config WARN: Missing/Invalid email. Please input your email", true);
-            email = logger.input("Email: ");
+            email = await logger.input("Email: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
             logger.log("Credentials saved to file", true);
         }
