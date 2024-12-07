@@ -12,7 +12,7 @@ Prerequisites:
 
 ### Foreword
 
-Since MyFlex lacks an API, MyFlex Automation relies on browser automation tools to emulate user actions in order to schedule Flex Blocks. Part of this workflow involves logging in to the user's Google account by entering unencrypted credentials, which the program must store in order to operate. For this reason, **it is strongly advised that you deploy this program as a local instance.** This program is designed to run continously, checking every 24 hours (by default) for new Flex Blocks to have opened for enrollment. My personal recommendation is to host this software on something like an old laptop you leave on and plugged in.
+Since MyFlex lacks an API, MyFlex Automation relies on browser automation tools to emulate user actions in order to schedule Flex Blocks. The nature of this method means storing unencrypted Google Account credentials is unavoidable. For this reason, **it is strongly advised that you deploy this program as a local instance to avoid the glaring security vulerability of sharing unencrypted credentials with others.** This program is designed to run continously, checking every 24 hours (by default) for new Flex Blocks to have opened for enrollment. My personal recommendation is to host this software on something like an old laptop you leave on and plugged in.
 
 ### Instructions
 
