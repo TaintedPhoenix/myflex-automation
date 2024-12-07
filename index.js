@@ -479,6 +479,7 @@ async function main() {
         registerIblocks();
     } catch (err) {
         logger.error(err, true);
+        console.log("UNCAUGHT ERROR: \x1b[41mPlease report this on the project's GitHub!");
         throw(err);
     }
 
