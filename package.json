@@ -10,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.7",
+    "js-yaml": "^4.1.0",
     "selenium-webdriver": "^4.27.0"
   },
   "type": "module"

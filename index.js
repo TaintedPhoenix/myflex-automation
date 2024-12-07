@@ -5,6 +5,7 @@ import chrome from "selenium-webdriver/chrome.js"
 import "dotenv/config";
 import fs from "fs";
 import {Logger} from "./logger.js";
+import YAML from "js-yaml";
 
 const logger = new Logger("MyFlexAutomation");
 
@@ -16,8 +17,8 @@ let email = process.env.EMAIL;
 let password = process.env.PASSWORD;
 let config = null;
 
-if (fs.existsSync("config.json")) {
-    config = JSON.parse(fs.readFileSync("config.json"));
+if (fs.existsSync("config.yaml")) {
+    config = await YAML.load(fs.readFileSync("config.yaml"));
 }
 
 async function googleSignIn(driver) { //Navigate the google sign in popup (Username/Email section then Password Section)
@@ -385,8 +386,8 @@ async function main() {
         logger.error("Config ERROR: Missing `package.json` package file!");
     }
 
-    if (!fs.existsSync("config.json")) {
-        logger.error("Config ERROR: Missing `config.json` config file!");
+    if (!fs.existsSync("config.yaml")) {
+        logger.error("Config ERROR: Missing `config.yaml` config file!");
         process.exit();
     } else if (config == null || !config.hasOwnProperty("interval") || !config.hasOwnProperty("eventTitle") || !config.hasOwnProperty("agenda")) {
         let missing = "";
@@ -397,7 +398,7 @@ async function main() {
             }
         }
         missing = missing.substring(0, missing.length-2);
-        logger.error("Config ERROR: Missing required configuration properties in `config.json` " + missing);
+        logger.error("Config ERROR: Missing required configuration properties in `config.yaml` " + missing);
         process.exit();
     }
 
