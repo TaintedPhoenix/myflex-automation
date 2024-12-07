@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import readline from "readline";
-import YAML from "js-yaml";
+import JSON5 from "json5";
 
 class Logger {
 
@@ -13,10 +13,10 @@ class Logger {
 
     constructor(processName) {
         this.processName = processName;
-        if (fs.existsSync("config.yaml")) {
+        if (fs.existsSync("config.json5")) {
             let configData;
             try {
-                configData = YAML.load((fs.readFileSync("config.yaml", 'utf-8')));
+                configData = JSON5.parse((fs.readFileSync("config.json5", 'utf-8')));
                 this.logFileEnabled = Object.keys(configData).includes("loggingEnabled") ? Boolean(configData["loggingEnabled"]) : true
                 this.outputEnabled = Object.keys(configData).includes("outputEnabled") ? Boolean(configData["outputEnabled"]) : true
             } catch (err) {}
@@ -35,10 +35,10 @@ class Logger {
             }
             fs.writeFileSync(path.join("logs", "latest.txt"), "");
         } else {
-            this.warn("Logger WARN: Log file set to disabled in `config.yaml` no log file will be created for this session", true);
+            this.warn("Logger WARN: Log file set to disabled in `config.json5` no log file will be created for this session", true);
         }
         if (!this.outputEnabled) {
-            this.warn("Logger WARN: Output set to disabled in `config.yaml` only critical information will be displayed. Some of Chrome's interal logs may still show", true);
+            this.warn("Logger WARN: Output set to disabled in `config.json5` only critical information will be displayed. Some of Chrome's interal logs may still show", true);
         }
     }
 

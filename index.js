@@ -5,7 +5,7 @@ import chrome from "selenium-webdriver/chrome.js"
 import "dotenv/config";
 import fs from "fs";
 import {Logger} from "./logger.js";
-import YAML from "js-yaml";
+import JSON5 from "json5";
 
 const logger = new Logger("MyFlexAutomation");
 
@@ -17,8 +17,8 @@ let email = process.env.EMAIL;
 let password = process.env.PASSWORD;
 let config = null;
 
-if (fs.existsSync("config.yaml")) {
-    config = await YAML.load(fs.readFileSync("config.yaml"));
+if (fs.existsSync("config.json5")) {
+    config = await JSON5.parse(fs.readFileSync("config.json5"));
 }
 
 async function googleSignIn(driver) { //Navigate the google sign in popup (Username/Email section then Password Section)
@@ -386,8 +386,8 @@ async function main() {
         logger.error("Config ERROR: Missing `package.json` package file!");
     }
 
-    if (!fs.existsSync("config.yaml")) {
-        logger.error("Config ERROR: Missing `config.yaml` config file!");
+    if (!fs.existsSync("config.json5")) {
+        logger.error("Config ERROR: Missing `config.json5` config file!");
         process.exit();
     } else if (config == null || !config.hasOwnProperty("interval") || !config.hasOwnProperty("eventTitle") || !config.hasOwnProperty("agenda")) {
         let missing = "";
@@ -398,11 +398,11 @@ async function main() {
             }
         }
         missing = missing.substring(0, missing.length-2);
-        logger.error("Config ERROR: Missing required configuration properties in `config.yaml` " + missing);
+        logger.error("Config ERROR: Missing required configuration properties in `config.json5` " + missing);
         process.exit();
     }
     if (config != null && config.hasOwnProperty("agenda") && Object.keys(config.agenda).length < 1 ) {
-        logger.error("Config ERROR: Enrollment agenda has not been set in `config.yaml`. See `README.md` for setup instructions");
+        logger.error("Config ERROR: Enrollment agenda has not been set in `config.json5`. See `README.md` for setup instructions");
         process.exit();
     }
 

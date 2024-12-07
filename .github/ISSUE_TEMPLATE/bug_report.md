@@ -14,4 +14,4 @@ A clear and concise description of what the bug is.
 **Additional context**
 Add any other context about the problem here.
 
-Make sure to attach your `config.yaml` and any relevant log files!
+Make sure to attach your `config.json5` and any relevant log files!

@@ -1,0 +1,7 @@
+{
+    "agenda" : {}, //The enrollment agenda, what blocks to enroll in and when (see README.md)
+    "eventTitle" : "I Block", //The title of the unscheduled event (see README.md) 
+    "interval" : 86400000, //The time (in milliseconds) between checking for newly availiable Flex Blocks
+    "loggingEnabled" : true, //Whether to log the program's output to a log file
+    "outputEnabled" : true, //Whether to display non-critical program output in the console
+}

@@ -20,7 +20,7 @@ Ensure you have downloaded the programs listed under Prerequisites. Then:
 
 1. Download the source code archive of the [latest release](https://github.com/TaintedPhoenix/MyFlex-automation/releases/latest).
 2. Extract the file to a directory of your choice.
-3. Open the `config.yaml` file in a text editor.
+3. Open the `config.json5` file in a text editor.
 4. Set up your desired enrollment agenda according to the specification below and save the file.
 5. Launch the program by executing  `run.bat` on Windows devices and `run.sh` on MacOS/Linux devices.
 6. Input your Google Email and Password when prompted (These will be saved locally to the `.env` credentials file for future launches).
@@ -28,7 +28,7 @@ Ensure you have downloaded the programs listed under Prerequisites. Then:
 
 ## Configuration
 
-The config options (including the enrollment agenda) for the program can be found in `config.yaml`. Each parameter is detailed below. The default `config.yaml` looks like this:
+The config options (including the enrollment agenda) for the program can be found in `config.json5`. Each parameter is detailed below. The default `config.json5` looks like this:
 
 ```yaml
 {
@@ -83,7 +83,7 @@ Sets whether or not to display non-critical messages from the program to the con
 
 ### Full Example
 
-This is how a fully configured `config.yaml` file could look:
+This is how a fully configured `config.json5` file could look:
 
 ```yaml
 {
@@ -111,7 +111,7 @@ This is how a fully configured `config.yaml` file could look:
 
 ## Error reporting
 
-As MyFlex Automation is still in active development, it is prone to errors. If you encounter an error, please [open an issue on GitHub](https://github.com/TaintedPhoenix/MyFlex-automation/issues) (After checking that someone else hasn't already reported the same issue) and include a copy of your `config.yaml` file and any relevant log files (usually `latest.txt`) which can be found in the `logs` folder, as well as a short description of the problem, and any other relevant information. Your contribution is greatly appreciated!
+As MyFlex Automation is still in active development, it is prone to errors. If you encounter an error, please [open an issue on GitHub](https://github.com/TaintedPhoenix/MyFlex-automation/issues) (After checking that someone else hasn't already reported the same issue) and include a copy of your `config.json5` file and any relevant log files (usually `latest.txt`) which can be found in the `logs` folder, as well as a short description of the problem, and any other relevant information. Your contribution is greatly appreciated!
 
 Additionally, if want to make any additions or changes to the program (especially to this `README.md`) that you believe would be beneficial, feel free to [create a Pull Request](https://github.com/TaintedPhoenix/MyFlex-automation/pulls) and submit your desired changes for review.
 
