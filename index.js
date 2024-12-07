@@ -25,16 +25,26 @@ async function googleSignIn(driver) { //Navigate the google sign in popup (Usern
     await driver.wait(until.elementLocated(By.name("identifier"))); //Wait until the username box is found
     let unElement = await driver.findElement(By.name("identifier")); //Locate the username box
     await driver.wait(until.elementIsEnabled(unElement)); //Wait until the username box is interactable
+    await unElement.clear();
     await unElement.sendKeys(email); //Input username into username box
     logger.log("Entered username");
 
     await driver.findElement(By.id("identifierNext")).click(); //Locate and click the "Next" button
     logger.log("Clicked next");
     await googlePw(driver); //Handle the password section
+    return;
 }
 
 async function googlePw(driver) { //Navigate the google sign in popup (Password Section Only)
-    await driver.wait(until.elementLocated(By.name("Passwd"))); //Wait until password box is found
+    try {
+        await driver.wait(until.elementLocated(By.name("Passwd")), 3000); //Wait until password box is found
+    } catch (err) {
+        logger.warn("Login WARN: Invalid email. Please update your credentials.");
+        email = await logger.input("Email: ");
+        fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
+        logger.log("Credentials saved to file", true);
+        return await googleSignIn(driver);
+    }
     let pwElement = await driver.findElement(By.name("Passwd")); //Locate the password box
     await driver.wait(until.elementIsEnabled(pwElement)); //Wait until the password box is interactable 
     await sleep(400);
@@ -43,6 +53,7 @@ async function googlePw(driver) { //Navigate the google sign in popup (Password 
 
     await driver.findElement(By.id("passwordNext")).click(); //Locate and click the "Next" button
     logger.log("Clicked Next");
+    return;
 }
 
 async function isWindowOpen(driver) { //Assess whether the current window has been closed or remains open
@@ -107,16 +118,25 @@ async function login(driver) {
             await googleSignIn(driver); //Handle sign in
         }
     }
-    await driver.switchTo().window(windows[0]); //Return to original window (app.myflexlearning.com/login)
-    logger.log("Swapped back to original window");
-    await driver.wait(until.urlIs(homeurl), 10000); //Wait to be redirected
-    let currentUrl = await driver.getCurrentUrl(); //Get current tab url
-    if (currentUrl == homeurl) { //Check that redirect to home is complete and login is successful.
-        logger.log("Login successful.");
-        return true;
-    } else {
-        return false;
+
+    while (true) {
+        await driver.switchTo().window(windows[0]); //Return to original window (app.myflexlearning.com/login)
+        logger.log("Swapped back to original window");
+        try {
+            await driver.wait(until.urlIs(homeurl), 10000); //Wait to be redirected
+            break;
+        } catch (err) {
+            logger.warn("Login WARN: Invalid password. Please update your credentials");
+            password = await logger.input("Password: ");
+            fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
+            logger.log("Credentials saved to file", true);
+            await driver.switchTo().window(windows[1]);
+            await googlePw(driver);
+        }
     }
+
+    logger.log("Login successful.");
+    return true;
 }
 
 async function homepage(driver) {
@@ -251,8 +271,18 @@ async function blocksList(driver, rows, cName, compare) {
             let blockName = await rows[i].findElement(By.className(cName)).getText();
             logger.log("Found: " + blockName + " Searching for: " + compare);
             if (blockName.includes(compare)) {
-                await selectRow(driver, rows[i]);
-                return 1;
+                let seatsString = await rows[i].findElement(By.className("mat-column-seats")).getText().split("/");
+                if (Number(seatsString[0]) >= Number(seatsString[1])) {
+                    logger.warn("Enrollment WARN: Desired block is full");
+                    let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]"))
+                    await driver.wait(until.elementIsEnabled(okElement));
+                    await sleep(600);
+                    await okElement.click();
+                    return 2;
+                } else {
+                    await selectRow(driver, rows[i]);
+                    return 1;
+                }
             }
         } catch (err) {
             if (err.name == 'StaleElementReferenceError') {
@@ -318,23 +348,25 @@ async function blockSignup(driver, day) {
         if (config.agenda[day].hasOwnProperty("name")) {
             let r = await blocksList(driver, rows, "mat-column-name", config.agenda[day].name);
             if (r == -1) i--;
-            else if (r == 1) return;
+            else if (r > 0) return;
         }
         if (config.agenda[day].hasOwnProperty("teacher")) {
             let r = await blocksList(driver, rows, "mat-column-teacher", config.agenda[day].teacher);
             if (r == -1) i--;
-            else if (r == 1) return;
+            else if (r > 0) return;
         }
         if (config.agenda[day].hasOwnProperty("room")) {
             let r = await blocksList(driver, rows, "mat-column-room", config.agenda[day].room);
             if (r == -1) i--;
-            else if (r == 1) return;
+            else if (r > 0) return;
         }
     }
     //No matching blocks found, Error handling
     let dayProperties = Object.keys(config.agenda[day]);
     if (!dayProperties.includes("name") && !dayProperties.includes("teacher") && !dayProperties.includes("room")) {
         logger.error("Config ERROR: No block identifiers (name, teacher, room) found for cycle day " + String(day));
+        await driver.quit();
+        process.exit(1);
     } else {
         let identifiers = ""
         for (let i = 0; i < dayProperties.length; i++) {
@@ -343,10 +375,9 @@ async function blockSignup(driver, day) {
             }
         }
         identifiers = identifiers.substring(0, identifiers.length-2);
-        logger.error("Block ERROR: No block found for cycle day "+day+" under query " + config.agenda[day].query + " with any matches to " + identifiers);
+        logger.warn("Enrollment WARN: No block found for cycle day "+day+" under query " + config.agenda[day].query + " with any matches to " + identifiers, true);
     }
-    await driver.quit();
-    process.exit();
+    return;
 }
 
 async function registerIblocks() {
@@ -414,29 +445,41 @@ async function main() {
         logger.log("Credentials saved to file", true);
     } else if (password == null || password == "" || email == null || email == "") {
         if ((password == null || password == "") && (email == null || email == "")) {
-            logger.warn("Config WARN: Missing/Invalid credentials. Please input your credentials", true);
+            logger.warn("Config WARN: Missing credentials. Please input your credentials", true);
             email = await logger.input("Email: ");
             password = await logger.input("Password: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
             logger.log("Credentials saved to file", true);
         } else if (password == null || password == "") {
-            logger.warn("Config WARN: Missing/Invalid password. Please input your password", true);
+            logger.warn("Config WARN: Missing password. Please input your password", true);
             password = await logger.input("Password: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
             logger.log("Credentials saved to file", true);
         } else {
-            logger.warn("Config WARN: Missing/Invalid email. Please input your email", true);
+            logger.warn("Config WARN: Missing email. Please input your email", true);
             email = await logger.input("Email: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
             logger.log("Credentials saved to file", true);
         }
     }
+    while (!(/[-A-Za-z0-9!#$%&'*+/=?^_`{|}~]+(?:\.[-A-Za-z0-9!#$%&'*+/=?^_`{|}~]+)*@(?:[A-Za-z0-9](?:[-A-Za-z0-9]*[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[-A-Za-z0-9]*[A-Za-z0-9])?/i).test(email)) { //Make sure the email is in a valid format (Regex testing)
+        logger.warn("Config WARN: Invalid email. Please update your email", true);
+        email = await logger.input("Email: ");
+        fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
+        logger.log("Credentials saved to file", true);
+    }
+    while (password == "") {
+        logger.warn("Config WARN: Invalid password. Please update your password", true);
+        password = await logger.input("Password: ");
+        fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
+        logger.log("Credentials saved to file", true);
+    }
 
     try {
         registerIblocks();
     } catch (err) {
-        logger.error(err);
-        process.exit('1');
+        logger.error(err, true);
+        throw(err);
     }
 
 }

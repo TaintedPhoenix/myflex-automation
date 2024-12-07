@@ -25,15 +25,15 @@ class Logger {
             let now = new Date();
             let pathString  = now.toISOString().substring(0, 10);
             let i = 1;
-            while (fs.existsSync(path.join("logs", pathString + ".txt"))) {
+            while (fs.existsSync(path.join("logs", pathString + ".log"))) {
                 pathString = pathString.substring(0, 10) + "-" + String(i);
                 i++;
             }
-            this.logFilePath = path.join("logs", pathString + ".txt");
+            this.logFilePath = path.join("logs", pathString + ".log");
             if (!fs.existsSync(path.join("logs"))) {
                 fs.mkdirSync(path.join("logs"));
             }
-            fs.writeFileSync(path.join("logs", "latest.txt"), "");
+            fs.writeFileSync(path.join("logs", "latest.log"), "");
         } else {
             this.warn("Logger WARN: Log file set to disabled in `config.json5` no log file will be created for this session", true);
         }
@@ -47,18 +47,18 @@ class Logger {
         let pathString = now.toISOString().substring(0, 10);
         if (pathString != this.logFilePath.substring(5, 15)) {
             let i = 1;
-            while (fs.existsSync(path.join("logs", pathString + ".txt"))) {
+            while (fs.existsSync(path.join("logs", pathString + ".log"))) {
                 pathString = pathString.substring(0, 10) + "-" + String(i);
                 i++;
             }
-            this.logFilePath = path.join("logs", pathString + ".txt");
-            fs.writeFileSync(path.join("logs", "latest.txt"), "");
+            this.logFilePath = path.join("logs", pathString + ".log");
+            fs.writeFileSync(path.join("logs", "latest.log"), "");
         }
     }
 
     writeLog(content) {
         fs.appendFileSync(this.logFilePath, content+"\n", 'utf-8');
-        fs.appendFileSync(path.join("logs", "latest.txt"), content + "\n", 'utf-8')
+        fs.appendFileSync(path.join("logs", "latest.log"), content + "\n", 'utf-8')
     }
 
     /** 
@@ -105,14 +105,16 @@ class Logger {
      * @param {string} info The information to write.
      */
 
-    error(info) {
+    error(info, noOutput = false) {
         let now = new Date();
         let content = `[${now.toISOString().substring(11, 19)}] [${this.processName}/Error]: ${info}`
         if (this.logFileEnabled) {
             this.assessLog();
             this.writeLog(content);
         }
-        console.error("\x1b[1;49;31m" + content + "\x1b[0m");
+        if (!noOutput) {
+            console.error("\x1b[1;49;31m" + content + "\x1b[0m");
+        }
     }
 
     /**
