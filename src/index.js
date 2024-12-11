@@ -194,7 +194,7 @@ async function calendarPage(driver) { //Set up week naviagation
 async function week(driver) { //Process all the blocks for the week
     logger.log("Navigating week")
     
-    await driver.wait(until.elementLocated(By.className("month-header")).getText()); //Wait until month header found
+    await driver.wait(until.elementLocated(By.className("month-header"))); //Wait until month header found
     let monthHeader = await driver.findElement(By.className("month-header")).getText(); //Get the month header
 
     let events = await driver.findElements(By.className("event-details")); //Find each block element
@@ -231,7 +231,10 @@ async function week(driver) { //Process all the blocks for the week
         logger.log("EventName="+ eventName);
         if (eventName == config.eventTitle) { //Check if the block title matches the unscheduled title set in the config
             let cycleDay = await event.findElement(By.className("cycle-day")).getText(); //Find the day of the cycle the block falls on
-            let dateString = monthHeader.split(" ").splice(1, 0, days[i]).join(" ");
+            let dr = monthHeader.split(" ");
+            dr.splice(1, 0, days[i]);
+            let dateString = dr.join(" ");
+            console.log("Datestring", dateString);
             //Using month header and day, assemble a string (ex. "December 12 2024") that we can turn into a date object later
             await eventNameElement.click(); //Click on the event to open the scheduling popup
             result = result + await changeClass(driver, cycleDay, dateString); //Attempt to change the class to the desired one and keep a running total of their results
@@ -256,15 +259,26 @@ async function changeClass(driver, day, date) { //Open the block list
         await okElement.click();//Click the ok button to close the popup and avoid breaking the program
         return 1; //Return 1 to signify that we have found the end of the open blocks and end the function
     }
+
+    let desired = desiredOrder(date, day);
+    console.log(date, day, desired);
+    if (desired.length < 1) {
+        logger.warn("Enrollment WARN: No enrollment instructions found for date= " + date + " on cycleDay= " + day, true)
+        let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]")) //Find the ok button
+        await driver.wait(until.elementIsEnabled(okElement)); //Wait until ok button enabled
+        await sleep(600); //Wait 0.6s for an element to stop blocking the ok button
+        await okElement.click(); //Click the ok button
+        return 0; //Specifies that block was not the end of open blocks
+    }
     
     let changeButton = await driver.findElement(By.xpath("//span[contains(., '"+"Change Class"+"')]")); //Find the change class button
     await driver.wait(until.elementIsEnabled(changeButton)); //Wait until change button enabled
     await changeButton.click(); //Click the change class button
-    let desired = desiredOrder(date, day);
     let success = false;
     for (let v = 0; v < desired.length; v++) {
-        let r = await blockSignup(driver, desired); //Handle the block list popup
+        let r = await blockSignup(driver, desired[v]); //Handle the block list popup
         if (r == 1) { success = true; break; } //If the block was successully booked, end the function
+        else if (r == 0) { logger.warn("Enrollment WARN: Block with query= " + desired[v].query + " on date= " + date + " is full")}
     }
     if (!success) { //If none of the blocks were successfully scheduled
         logger.error("Enrollment ERROR: Unable to enroll in any desired block for date= " + date + " on cycleDay= " + day );
@@ -290,6 +304,7 @@ async function blockSignup(driver, desired) { //Handle the block list and sign u
     await stales.forEach(async element => { //Save the block names from these elements to compare to later
         staleNames.push(await (await element.findElement(By.className("mat-column-name"))).getText());
     })
+    await searchBox.clear();
     await searchBox.sendKeys(desired.query); //Enter the query for the most desired block
     await driver.wait(async () => { //Wait until loading indicator not present
         let elements = await driver.findElements(By.className("loading-indicator"));
@@ -378,7 +393,7 @@ async function blocksList(driver, rows, cName, compare) {  //Attempt to select t
             let blockName = await rows[i].findElement(By.className(cName)).getText(); //Get the desired information of the block (name or teacher or room)
             logger.log("Found: " + blockName + " Searching for: " + compare);
             if (blockName.includes(compare)) { //If the block matches the information specified
-                let seatsString = await rows[i].findElement(By.className("mat-column-seats")).getText().split("/"); //Get the number of seats availiable and seats taken in the block
+                let seatsString = (await rows[i].findElement(By.className("mat-column-seats")).getText()).split("/"); //Get the number of seats availiable and seats taken in the block
                 if (Number(seatsString[0]) >= Number(seatsString[1])) { //If the block is full
                     return 2; //Return 2 to specify that a block was found but is full
                 } else {
@@ -400,7 +415,7 @@ async function blocksList(driver, rows, cName, compare) {  //Attempt to select t
 
 function desiredOrder(dateString, cycleDay) { //Get the most desired blocks in priority order
     let result = []
-    if (config.hasOwnProperty("schedule") && Object.keys(config.schedule) > 0) { //If config has schedule 
+    if (config.hasOwnProperty("schedule") && Object.keys(config.schedule).length > 0) { //If config has schedule 
         let dt = new Date(dateString);
         let ds = dt.toLocaleDateString("en-CA"); //Get current local date in"yyyy-mm-dd" format 
         if (config.schedule.hasOwnProperty(ds)) { //If blocks are defined for that date
@@ -413,15 +428,16 @@ function desiredOrder(dateString, cycleDay) { //Get the most desired blocks in p
             }
         }
     }
-    if (config.hasOwnProperty(agenda) && Object.keys(config.agenda) > 0 && config.agenda.hasOwnProperty(cycleDay)) { //If the agenda is set for this cycle day
-        if (Array.isArray(config.schedule[cycleDay])) { //If there are multiple for this cycle day
-            result.push(...config.schedule[cycleDay]); //Add them to the order
-        } else if (typeof config.schedule[cycleDay] == "object") { //If there is only one
-            result.push(config.schedule[cycleDay]); //Add it to the order
+    if (config.hasOwnProperty("agenda") && Object.keys(config.agenda).length > 0 && config.agenda.hasOwnProperty(cycleDay)) { //If the agenda is set for this cycle day
+        if (Array.isArray(config.agenda[cycleDay])) { //If there are multiple for this cycle day
+            result.push(...config.agenda[cycleDay]); //Add them to the order
+        } else if (typeof config.agenda[cycleDay] == "object") { //If there is only one
+            result.push(config.agenda[cycleDay]); //Add it to the order
         } else { //If the blocks are improperly defined
             logger.error("Config ERROR: Agenda block orders must be either object or array")
         }
     }
+    logger.log("Done compiling result")
     return result; //Return the order of blocks to try and book
 }
 
@@ -480,7 +496,7 @@ async function main() { //Config parsing and initialization
     if (!fs.existsSync("config.json5")) {
         logger.error("Config ERROR: Missing `config.json5` config file!");
         process.exit();
-    } else if (config == null || !config.hasOwnProperty("interval") || !config.hasOwnProperty("eventTitle") || !config.hasOwnProperty("agenda")) {
+    } else if (config == null || !config.hasOwnProperty("interval") || !config.hasOwnProperty("eventTitle")) {
         let missing = "";
         let props = ["interval", "eventTitle", "agenda"];
         for (let i = 0; i < props.length; i++) {
@@ -492,8 +508,8 @@ async function main() { //Config parsing and initialization
         logger.error("Config ERROR: Missing required configuration properties in `config.json5` " + missing);
         process.exit();
     }
-    if (config != null && config.hasOwnProperty("agenda") && Object.keys(config.agenda).length < 1 ) {
-        logger.error("Config ERROR: Enrollment agenda has not been set in `config.json5`. See `README.md` for setup instructions");
+    if (config != null && (!config.hasOwnProperty("agenda") || Object.keys(config.agenda).length < 1 ) && (!config.hasOwnProperty("schedule") || Object.keys(config.schedule).length < 1)) {
+        logger.error("Config ERROR: No enrollment instructions have been set in `config.json5`. See `README.md` for setup instructions");
         process.exit();
     }
 
