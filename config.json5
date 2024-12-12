@@ -1,5 +1,13 @@
 {
-    "agenda" : {}, //The enrollment agenda, what blocks to enroll in and when (see README.md)
+    "instructions" : { //The enrollment instructions (see README.md)
+        "schedule" : { //Used for prioritizing specific blocks on a specific date, highest priority
+            "2025-01-09" : [], //Date specified with yyyy-mm-dd format associated to list of blocks
+        },
+        "cycle" : { //Used for prioritizing specific blocks on a specific cycle day
+            "6" : [], //Day (string) associated to a list of blocks
+        },
+        "default" : [], //Used to specify blocks to look for on any day with a flex block, lowest priority. Associated to list of blocks
+    },
     "eventTitle" : "I Block", //The title of the unscheduled event (see README.md) 
     "interval" : 86400000, //The time (in milliseconds) between checking for newly availiable Flex Blocks
     "loggingEnabled" : true, //Whether to log the program's output to a log file
