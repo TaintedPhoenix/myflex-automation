@@ -12,7 +12,7 @@ Prerequisites:
 
 ### Foreword
 
-Since MyFlex lacks a public API, MyFlex Automation relies on browser automation tools to emulate user actions in order to schedule Flex Blocks. The nature of this method means storing unencrypted Google Account credentials is unavoidable. For this reason, **it is VERY STRONGLY ADVISED that you deploy this program as a local instance or on a server which you have complete control over to avoid sharing unencrypted credentials with others.** This program is designed to run continously, checking every 24 hours (by default) for new Flex Blocks to have opened for enrollment. My personal recommendation is to host this software on something like an old laptop you leave on and plugged in.
+Since MyFlex lacks a public API, MyFlex Automation relies on browser automation tools to emulate user actions to schedule Flex Blocks. The nature of this method means storing unencrypted Google Account credentials is unavoidable. For this reason, **it is VERY STRONGLY ADVISED that you deploy this program as a local instance or on a server you have complete control over to avoid sharing unencrypted credentials with others.** This program is designed to run continuously, checking every 24 hours (by default) for new Flex Blocks to have opened for enrollment. My recommendation is to host this software on something like an old laptop you leave on and plugged in.
 
 ### Instructions
 
@@ -21,8 +21,8 @@ Ensure you have downloaded the programs listed under Prerequisites. Then:
 1. Download the source code archive of the [latest release](https://github.com/TaintedPhoenix/MyFlex-automation/releases/latest).
 2. Extract the file to a directory of your choice.
 3. Open the `config.json5` file in a text editor.
-4. Set up your desired enrollment instructions according to the specification below and save the file.
-5. Launch the program by executing  `run.bat` on Windows devices and `run.sh` on MacOS/Linux devices.
+4. Set up your desired enrollment instructions per the specifications below and save the file.
+5. Launch the program by executing `run.bat` on Windows devices and `run.sh` on MacOS/Linux devices.
 6. Input your Google Email and Password when prompted (These will be saved locally to the `.env` credentials file for future launches).
 7. Ensure that the program is able to log in successfully by watching the output.
 
@@ -48,7 +48,7 @@ The config options (including the enrollment agenda) for the program can be foun
 
 #### instructions
 
-The most important config option is the enrollment instructions. You **must** alter this option in order for the program to function. It is an object/dictionary of members that describe what blocks the program should enroll in, when, and in what order. An example Flex Block is:
+The most important config option is the enrollment instructions. You **must** alter this option for the program to function. It is an object/dictionary of members that describe what blocks the program should enroll in, when, and in what order. An example Flex Block is:
 
 ```json5
 {
@@ -63,11 +63,11 @@ The only required Flex Block parameter is `query`, the text to be entered into t
 
 !["Tadeu" entered into the MyFlex search box, a block named "VGCUSA" appears in the results](assets/queryExample.png)
 
-At least one of the other three parameters (`name`, `teacher`, `room`) is required. This information is used to select the desired block from the ones remaining after the search query. Their names are self explanatory, but note that the `name` and `teacher` parameters only check that the Block Name or Teacher **includes** their value, not that it is an exact match. If more than one of these parameters are defined (Which is not necessary), the program will select the first block that matches **at least one** of the conditions, checking for a match to `name` first, then `teacher`, and finally `room`.
+At least one of the other three parameters (`name`, `teacher`, `room`) is required. This information is used to select the desired block from the ones remaining after the search query. Their names are self-explanatory, but note that the `name` and `teacher` parameters only check that the Block Name or Teacher **includes** their value, not that it is an exact match. If more than one of these parameters are defined (Which is not necessary), the program will select the first block that matches **at least one** of the conditions, checking for a match to `name` first, then `teacher`, and finally `room`.
 
-The above information describes how to convery *what* block you want, but you also need to convey when and in what order you want them. The `instructions` config option has three parameters (only one of which is required, but multiple are allowed): `schedule`, `cycle`, and `default` which each represent a different method of specifying when you want to book certain blocks. Blocks listed in `schedule` will be prioritized first, then blocks in `cycle`, then `default`.
+The above information describes how to convey *what* blocks you want, but you also need to convey when and in what order you want them. The `instructions` config option has three parameters (only one of which is required, but multiple are allowed): `schedule`, `cycle`, and `default` which each represent a different method of specifying when you want to book certain blocks. Blocks listed in `schedule` will be prioritized first, then blocks in `cycle`, then `default`.
 
-`schedule` is used for specifying blocks to prioritize on a specific date. Each date is a key, with the value being either a single block or an array of blocks (In an array, the elements listed first will take priority over the later elements in the array). In the below example, the proram will prioritize searching for the two listed blocks for the date "January 9 2025". It is perfectly fine to have more than one date for which you want to have a special priority list.
+`schedule` is used for specifying blocks to prioritize on a specific date. Each date is a key, with the value being either a single block or an array of blocks (In an array, the elements listed first will take priority over the later elements in the array). In the below example, the program will prioritize searching for the two listed blocks for the date "January 9, 2025". It is perfectly fine to have more than one date for which you want to have a special priority list.
 
 ```json5
 "schedule" : {
@@ -88,7 +88,7 @@ The above information describes how to convery *what* block you want, but you al
 }
 ```
 
-`cycle` is used for specifying blocks to prioritize for a specific cycle day (Ex. day 5 on a 6 day cycle). The cycle day(s) (as a string) are the keys, with the value being either a single block or a list of blocks to search for on that cycle day. In the below example, the program will search for the block "VGCUSA" on cycle day "6", and "Tadeu" on cycle day "3". You do not need to define a block order for every cycle day if you do not want to.
+`cycle` is used for specifying blocks to prioritize for a specific cycle day (Ex. day 5 on a 6-day cycle). The cycle day(s) (as a string) are the keys, with the value being either a single block or a list of blocks to search for on that cycle day. In the below example, the program will search for the block "VGCUSA" on cycle day "6", and "Tadeu" on cycle day "3". You do not need to define a block order for every cycle day if you do not want to.
 
 ```json5
 "cycle" : {
@@ -106,7 +106,7 @@ The above information describes how to convery *what* block you want, but you al
 }
 ```
 
-Finally, `default` is used to specify blocks to search for on any day regardless of cycle or date. It can be either a single block or a list of blocks. You do not have to define it if you dont want to, as long as either `cycle` or `schedule` is defined. In the below example, the blocks "Barneschi" and "Weissman" will be searched for every day (after every block in `schedule` and `cycle` has not been found).
+Finally, `default` is used to specify blocks to search for on any day regardless of cycle or date. It can be either a single block or a list of blocks. You do not have to define it if you don't want to, as long as either `cycle` or `schedule` is defined. In the below example, the blocks "Barneschi" and "Weissman" will be searched for every day (after every block in `schedule` and `cycle` has not been found).
 
 ```json5
 "default" : [
@@ -125,7 +125,7 @@ Finally, `default` is used to specify blocks to search for on any day regardless
 
 #### eventTitle
 
-`eventTitle` also requires attention in order for the program to function as intended. This option defines the string the program will search for when checking for unscheduled blocks. It should be set to whatever title your school uses for unscheduled blocks on MyFlex. In this example, the title is "I-block":
+`eventTitle` also requires attention for the program to function as intended. This option defines the string the program will search for when checking for unscheduled blocks. It should be set to whatever title your school uses for unscheduled blocks on MyFlex. In this example, the title is "I-block":
 
 ![An unscheduled MyFlex Block with the name "I-Block"](assets/eventTitleExample.png)
 
@@ -147,7 +147,7 @@ This is how a fully configured `config.json5` file could look:
 
 ```json5
 {
-    "intructions" : { 
+    "instructions" : { 
         "schedule" : { //User wants to define blocks to search for on a specific date(s)
             "2025-01-09" : [ //Set priority blocks for January 9 2025
                 { //Search for this block first
@@ -164,7 +164,7 @@ This is how a fully configured `config.json5` file could look:
                 }
             ]
         },
-        "cycle" : { //User wants to define blocks to serach for on a specific cycle day(s)
+        "cycle" : { //User wants to define blocks to search for on a specific cycle day(s)
             "3" : { //Set priority block for cycle day "3"
                 "query" : "Tadeu",
                 "teacher" : "Tadeu",
@@ -197,7 +197,7 @@ This is how a fully configured `config.json5` file could look:
             }
         ]
     },
-    "eventTitle" : "I Block", //User's School uses title "I Block" for unscheduled blocks
+    "eventTitle" : "I Block", //User's School uses the title "I Block" for unscheduled blocks
     "interval" : 86400000, //Check for newly-opened blocks every 24 hours
     "loggingEnabled" : true, //Write program output to a log file
     "outputEnabled" : true //Display non-critical program messages in the console 
