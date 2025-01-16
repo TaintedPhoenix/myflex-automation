@@ -27,10 +27,10 @@ async function googleSignIn(driver) { //Navigate the google sign in popup (Usern
     await driver.wait(until.elementIsEnabled(unElement)); //Wait until the username box is interactable
     await unElement.clear(); //Clear the username box
     await unElement.sendKeys(email); //Input username into username box
-    logger.log("Entered username");
+    logger.debug("Entered username");
 
     await driver.findElement(By.id("identifierNext")).click(); //Locate and click the "Next" button
-    logger.log("Clicked next");
+    logger.debug("Clicked next");
     await googlePw(driver); //Handle the password section
     return;
 }
@@ -42,17 +42,17 @@ async function googlePw(driver) { //Navigate the google sign in popup (Password 
         logger.warn("Login WARN: Invalid email. Please update your credentials."); //Update user email if it didnt work
         email = await logger.input("Email: ");
         fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
-        logger.log("Credentials saved to file", true);
+        logger.forceLog("Credentials saved to file");
         return await googleSignIn(driver); //Retry sign in
     }
     let pwElement = await driver.findElement(By.name("Passwd")); //Locate the password box
     await driver.wait(until.elementIsEnabled(pwElement)); //Wait until the password box is interactable 
     await sleep(400);
     await pwElement.sendKeys(password); //Input password into password box
-    logger.log("Entered password"); 
+    logger.debug("Entered password"); 
 
     await driver.findElement(By.id("passwordNext")).click(); //Locate and click the "Next" button
-    logger.log("Clicked Next");
+    logger.debug("Clicked Next");
     return;
 }
 
@@ -67,11 +67,11 @@ async function isWindowOpen(driver) { //Assess whether the current window has be
 
 async function login(driver) {
     let googleButton = await driver.findElement(By.id("googleButtonDivSmall")); //Locate the google sign in button
-    logger.log("ClickGoogleButton");
+    logger.debug("ClickGoogleButton");
     await googleButton.click(); //Click the google sign in button
     let windows = await driver.getAllWindowHandles(); //Get a list of open selenium windows from this session
     await driver.switchTo().window(windows[1]); //Swap to the second window (Sign in pop-up)
-    logger.log("Swap window");
+    logger.debug("Swap window");
     let headingText = await driver.findElement(By.id("headingText")).getText(); //Get the pop up heading text
 
     if (headingText.toLowerCase() == "sign in") { //Check if we are on the sign in screen by comapring heading text
@@ -91,14 +91,14 @@ async function login(driver) {
             //School account already signed in (Session may be expired)
             await driver.wait(until.elementIsEnabled(matches[0])); //Wait until account button enabled
             await matches[0].click(); //Click account button
-            logger.log("Clicked account");
+            logger.debug("Clicked account");
             if (isWindowOpen(driver)) { //Check if window has been closed (Will be the case if no password entry is needed)
                 //If window did not close then
                 //Further action required.
                 let headingText = await driver.findElement(By.id("headingText")).getText(); //Get heading text
                 if (headingText.toLowerCase() == "sign in") { //If heading text is equal to "Sign in" then
                     //Need to do the full sign in flow just like if there were no google accounts
-                    logger.log("Should be an impossible case"); 
+                    logger.warn("Should be an impossible case"); 
                     await googleSignIn(driver); //Handle the sign in
                 } else {//If heading text not "Sign in" then
                     //Re-enter password
@@ -109,7 +109,7 @@ async function login(driver) {
         } else { //School account not present (other accounts are)
             await driver.wait(until.elementLocated(By.xpath("//div[contains(., '"+"Use another account"+"')]"))) //Wait until "Use another account" button located
             await driver.findElement(By.xpath("//div[contains(., '"+"Use another account"+"')]")).click(); //Locate and click "Use another account" button
-            logger.log("Clicked use another account");
+            logger.debug("Clicked use another account");
 
             await googleSignIn(driver); //Handle sign in
         }
@@ -117,7 +117,7 @@ async function login(driver) {
 
     while (true) {
         await driver.switchTo().window(windows[0]); //Return to original window (app.myflexlearning.com/login)
-        logger.log("Swapped back to original window");
+        logger.debug("Swapped back to original window");
         try {
             await driver.wait(until.urlIs(homeurl), 10000); //Wait to be redirected
             break;
@@ -125,7 +125,7 @@ async function login(driver) {
             logger.warn("Login WARN: Invalid password. Please update your credentials"); 
             password = await logger.input("Password: "); //Get user to update password
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8");
-            logger.log("Credentials saved to file", true);
+            logger.forceLog("Credentials saved to file");
             await driver.switchTo().window(windows[1]); //Return to google sign in window
             await googlePw(driver); //Retry new password
         }
@@ -136,12 +136,12 @@ async function login(driver) {
 }
 
 async function homepage(driver) { //Get from homepage to calendar page
-    logger.log("Navigating homepage");
+    logger.debug("Navigating homepage");
     await driver.wait(until.elementLocated(By.css('*[routerlink="/calendar"]'))); //Wait until calendar button located
     let calendarButton = await driver.findElement(By.css('*[routerlink="/calendar"]')); //Find calendar button
     await driver.wait(until.elementIsEnabled(calendarButton)); //Wait until calendar button is enabled
     await calendarButton.click(); //Click calendar button
-    logger.log("Clicked calendarButton");
+    logger.debug("Clicked calendarButton");
     await calendarPage(driver);  //Process calendar page
     return;  
 }
@@ -165,15 +165,16 @@ async function calendarPage(driver) { //Set up week naviagation
     let weekButton = await driver.findElement(By.xpath("//span[contains(., '"+"Week"+"')]")); //Find week button
     await driver.wait(until.elementIsEnabled(weekButton)); //Wait until week button enabled
     await weekButton.findElement(By.xpath("..")).click(); //Click week button
-    logger.log("Clicked WeekButton");
+    logger.debug("Clicked WeekButton");
     
     await driver.wait(until.elementLocated(By.className("month-header"))); //Wait until month header found 
-    logger.log("MonthHeader: " + await driver.findElement(By.className("month-header")).getText()); //Get month header text (ex. "December 2024")
+    logger.debug("MonthHeader: " + await driver.findElement(By.className("month-header")).getText()); //Get month header text (ex. "December 2024")
     /* The below loop is designed to continue to process every week up until we find a block that we're not allowed to
     schedule yet, or the month header reads July at which point we know the school year is over and we can stop looking 
     */
     //Process all the blocks for the week as long as we don't find one that can't be scheduled and we don't get past June.
     while (await week(driver) <= 0 && !((await driver.findElement(By.className("month-header")).getText()).toLowerCase().startsWith("july"))) {
+        await driver.executeScript("window.scrollTo(0, 0);");
         await driver.findElement(By.className("fa-arrow-right")).click(); //Click the arrow button to naviagate to the next week
         await driver.wait(async () => { //Wait until loading indicator not found
             let elements = await driver.findElements(By.className("loading-indicator"));
@@ -186,7 +187,7 @@ async function calendarPage(driver) { //Set up week naviagation
 }
 
 async function week(driver) { //Process all the blocks for the week
-    logger.log("Navigating week")
+    logger.debug("Navigating week")
     
     await driver.wait(until.elementLocated(By.className("month-header"))); //Wait until month header found
     let monthHeader = await driver.findElement(By.className("month-header")).getText(); //Get the month header
@@ -197,17 +198,17 @@ async function week(driver) { //Process all the blocks for the week
         return -1;
     }
     let result = 0; //Result that will be returned to calendarpage loop, -1 = no blocks, 0 = blocks found, 1 = end of open blocks
-    logger.log("Looping blocks");
+    logger.debug("Looping blocks");
     let days = []; //What days (of the month) have blocks that need scheduling
     for (let i = 0; i < events.length; i++) { //For every block in the week
         let parentElement = await events[i].findElement(By.xpath("..")); //Find it's parent element
         let id = await parentElement.getAttribute("id"); //Get it's id
-        logger.log("Id is: '" + id + "'")
+        logger.debug("Id is: '" + id + "'")
         let idSplit = id.split("-");
         days.push(idSplit[idSplit.length-1]); //Extract the day of the month from its id
         //We can do this since all event element ids end with "-day" where day is the day of the month
     }
-    logger.log("Days length: "+ days.length); 
+    logger.debug("Days length: "+ days.length); 
     /*This second for loop is needed because after we successfully schedule a block it will refresh the page which causes
     problems if there is more than one block in the week that needs scheduling. This error happens because all the blocks we initally
     found will be made "stale" (unusable) because the page gets refreshed after signing up for a block. So we have to remember
@@ -215,14 +216,14 @@ async function week(driver) { //Process all the blocks for the week
     and re-fetching them when we're ready.
     */
     for (let i = 0; i < days.length; i++) { //For every block in the week
-        logger.log("DayLoop i="+ i);
+        logger.debug("DayLoop i="+ i);
         //Find the element with the id that ends in the day we're looking to schedule
         let eventParent = await driver.findElement(By.xpath("//*[substring(@id, string-length(@id) - "+days[i].length+") = '-"+days[i]+"']"));
         //get the child of that element
         let event = await eventParent.findElement(By.className("event-details"));
         let eventNameElement = await event.findElement(By.className("class-title")); //Get the title element
         let eventName = await eventNameElement.getText(); //Get the block title
-        logger.log("EventName="+ eventName);
+        logger.debug("EventName="+ eventName);
         if (eventName == config.eventTitle) { //Check if the block title matches the unscheduled title set in the config
             //Find the day of the cycle the block falls on, if there are cycle specific instructions
             let cycleDay = (config.instructions.hasOwnProperty("cycle") && Object.keys(config.instructions.cycle).length > 0) ? await event.findElement(By.className("cycle-day")).getText() : -1; 
@@ -243,7 +244,7 @@ async function week(driver) { //Process all the blocks for the week
 }
 
 async function changeClass(driver, date, day=-1) { //Open the block list
-    logger.log("ChangeClass PopUp");
+    logger.debug("ChangeClass PopUp");
     try { //Try and find the change class button
         //Wait until change class button found (max .8s )
         await driver.wait(until.elementLocated(By.xpath("//span[contains(., '"+"Change Class"+"')]")), 800); 
@@ -256,7 +257,7 @@ async function changeClass(driver, date, day=-1) { //Open the block list
 
     let desired = desiredOrder(date, day); //Get the order of blocks to attempt to book
     if (desired.length < 1) { //If there are no blocks to try alert user and continue to next day
-        logger.warn("Enrollment WARN: No enrollment instructions found for date= " + date + " on cycleDay= " + day, true)
+        logger.forceWarn("Enrollment WARN: No enrollment instructions found for date= " + date + " on cycleDay= " + day)
         let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]")) //Find the ok button
         await driver.wait(until.elementIsEnabled(okElement)); //Wait until ok button enabled
         await sleep(600); //Wait 0.6s for an element to stop blocking the ok button
@@ -304,7 +305,7 @@ async function blockSignup(driver, desired) { //Handle the block list and sign u
         let elements = await driver.findElements(By.className("loading-indicator"));
         return elements == 0;
     });
-    logger.log("Stalenames: " + staleNames.sort().join()); //Make a string of all the names of the initally displayed blocks
+    logger.debug("Stalenames: " + staleNames.sort().join()); //Make a string of all the names of the initally displayed blocks
     await driver.wait(async () => { //Wait until the blocks that are currently being displayed are not the same as the initally displayed blocks
         let stales2 = (await (await driver.findElement(By.className("table-section"))).findElements(By.css("mat-row")));
         let staleNames2 = [];
@@ -329,10 +330,10 @@ async function blockSignup(driver, desired) { //Handle the block list and sign u
         that the loop will eventually stop and wont have any chance of running infinitely
         */
         c++;
-        logger.log("BlockCheckLoop i="+ i);
+        logger.debug("BlockCheckLoop i="+ i);
         if (c > 0 && rows.length > 0) { //If it failed at least once
             logger.warn("Navigation WARN: Blocks list recheck triggered");
-            logger.log("Waiting for rows to be renewed");
+            logger.debug("Waiting for rows to be renewed");
             await driver.wait(async () => { //Wait until the rows from the previous loop have changed
                 try {
                     await rows[0].getTagName();
@@ -340,7 +341,7 @@ async function blockSignup(driver, desired) { //Handle the block list and sign u
                 } catch (err) {
                     return true;
                 }
-            }, 5000).then(logger.log("Done waiting for rows"));
+            }, 5000).then(logger.debug("Done waiting for rows"));
             await sleep(300); //Wait .3s just in case
         }
         if (c > 1) { //If it failed at least twice, wait and 3 seoncds for things to load
@@ -381,13 +382,13 @@ async function blockSignup(driver, desired) { //Handle the block list and sign u
         logger.error("Config ERROR: No identifiers found for block with query= " + desired.query);
     }
     identifiers = identifiers.substring(0, identifiers.length-2); //Remove trailing comma
-    logger.warn("Enrollment WARN: No block found under query " + desired.query + " with any matches to " + identifiers, true);
+    logger.forceWarn("Enrollment WARN: No block found under query " + desired.query + " with any matches to " + identifiers);
     
     return -1; //Specify that no matching block was found
 }
 
 async function blocksList(driver, rows, cName, compare) {  //Attempt to select the desired block
-    logger.log("Checking block list")
+    logger.debug("Checking block list")
     for (let i = 0; i < rows.length; i++) { //For every row in the table of blocks
         try {
             let blockName = await rows[i].findElement(By.className(cName)).getText(); //Get the desired information of the block (name or teacher or room)
@@ -447,12 +448,12 @@ function desiredOrder(dateString, cycleDay=-1) { //Get the most desired blocks i
             logger.error("Config ERROR: Default block order must be either object or array");
         }
     }
-    logger.log("Done compiling result")
+    logger.debug("Done compiling result")
     return result; //Return the order of blocks to try and book
 }
 
 async function selectRow(driver, rowElement) { //Click on and schedule the block
-    logger.log("Row selected");
+    logger.debug("Row selected");
     await rowElement.findElement(By.css("mat-radio-button")).click(); //Click the block selector button
     await driver.findElement(By.xpath("//span[contains(., '"+"Change Schedule"+"')]")).click(); //Click the change schedule button
     await driver.wait(async () => { //Wait until the loading indicator dissapears
@@ -482,7 +483,7 @@ async function registerIblocks() { //Main register task
     }
     //Should be logged in and on homepage by this point
     await homepage(driver); //Naviagate the homepage
-    logger.log("Enroll task finished successfully", true);
+    logger.forceLog("Enroll task finished successfully");
     await driver.quit(); //Quit the driver once done
     setTimeout(async function() { //Set the next task to run after an interval
         registerIblocks();
@@ -491,14 +492,16 @@ async function registerIblocks() { //Main register task
 
 async function main() { //Config parsing and initialization
 
-    logger.log("Welcome to MyFlex Automation!", true);
+    logger.forceLog("Welcome to MyFlex Automation!");
+    logger.debug("Checking package file")
     if (fs.existsSync("package.json")) { //Ensure that the package file exists
         let data = await JSON.parse(fs.readFileSync("package.json")); //read the package file to get the version
-        logger.log(`Initializing program version ${Object.keys(data).includes("version") ? data.version : "unknown"}...\n`, true);
+        logger.forceLog(`Initializing program version ${Object.keys(data).includes("version") ? data.version : "unknown"}...\n`);
     } else {
         logger.error("Config ERROR: Missing `package.json` package file!");
     }
 
+    logger.debug("Checking config file")
     if (!fs.existsSync("config.json5")) { //Ensure that config file exists
         logger.error("Config ERROR: Missing `config.json5` config file!");
         process.exit(); //Exit if it doesn't exist
@@ -515,56 +518,60 @@ async function main() { //Config parsing and initialization
         logger.error("Config ERROR: Missing required configuration properties in `config.json5` " + missing);
         process.exit(); //Exit since missing prpoerties
     }
+    logger.debug("Checking enrollment instructions")
     //If there is not at least one enrollment instruction
     if ((!config.instructions.hasOwnProperty("cycle") || Object.keys(config.instructions.cycle).length < 1 ) && (!config.instructions.hasOwnProperty("schedule") || Object.keys(config.instructions.schedule).length < 1) && (!config.instructions.hasOwnProperty("default") || (Array.isArray(config.instructions.default) && config.instructions.default.length < 1) )) {
         logger.error("Config ERROR: No enrollment instructions have been set in `config.json5`. See `README.md` for setup information");
         process.exit(); //Exit the process because there would be no point in running the program without enrollment instructions
     }
-
+    logger.debug("Checking crededntials file")
     if (!fs.existsSync(".env")) { //Check if the .env credentials file exists
-        logger.warn("Config WARN: `.env` credentials file not found. Please input your credentials", true);
+        logger.forceWarn("Config WARN: `.env` credentials file not found. Please input your credentials");
         email = await logger.input("Email: "); //Ask user to update their credentials if file doesn't exist
         password = await logger.input("Password: ");
         fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8"); //Save new credentials
-        logger.log("Credentials saved to file", true);
+        logger.forceLog("Credentials saved to file");
     } else if (password == null || password == "" || email == null || email == "") { //If email or password missing
         if ((password == null || password == "") && (email == null || email == "")) { //If password AND email missing
-            logger.warn("Config WARN: Missing credentials. Please input your credentials", true);
+            logger.forceWarn("Config WARN: Missing credentials. Please input your credentials");
             email = await logger.input("Email: "); //Ask user to update both credentials
             password = await logger.input("Password: ");
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8"); //Save new credentials
-            logger.log("Credentials saved to file", true);
+            logger.forceLog("Credentials saved to file");
         } else if (password == null || password == "") { //If just password missing
-            logger.warn("Config WARN: Missing password. Please input your password", true);
+            logger.forceWarn("Config WARN: Missing password. Please input your password");
             password = await logger.input("Password: "); //Ask user to update password
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8"); //Save credentials with new password
-            logger.log("Credentials saved to file", true);
+            logger.forceLog("Credentials saved to file");
         } else { //If just email missing
-            logger.warn("Config WARN: Missing email. Please input your email", true);
+            logger.forceWarn("Config WARN: Missing email. Please input your email");
             email = await logger.input("Email: "); //Ask user to update email
             fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8"); //Save credentials with new email
-            logger.log("Credentials saved to file", true);
+            logger.forceLog("Credentials saved to file");
         }
     }
+    logger.debug("Checking email")
     //Make sure the email is in a valid format (Regex testing) by looping until it is
     while (!(/[-A-Za-z0-9!#$%&'*+/=?^_`{|}~]+(?:\.[-A-Za-z0-9!#$%&'*+/=?^_`{|}~]+)*@(?:[A-Za-z0-9](?:[-A-Za-z0-9]*[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[-A-Za-z0-9]*[A-Za-z0-9])?/i).test(email)) { 
-        logger.warn("Config WARN: Invalid email. Please update your email", true);
+        logger.forceWarn("Config WARN: Invalid email. Please update your email");
         email = await logger.input("Email: "); //If email is invalid ask user to update
         fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8"); //Save credentials with new email
-        logger.log("Credentials saved to file", true);
+        logger.forceLog("Credentials saved to file");
     }
+    logger.debug("Checking password")
     //Make sure the password exists by looping until the user enters one
     while (password == "") {
-        logger.warn("Config WARN: Invalid password. Please update your password", true);
+        logger.forceWarn("Config WARN: Invalid password. Please update your password");
         password = await logger.input("Password: "); //Ask the user to update password
         fs.writeFileSync(".env", `EMAIL="${email}"\nPASSWORD="${password}"`, "utf-8"); //Save credentials with new password
-        logger.log("Credentials saved to file", true);
+        logger.forceLog("Credentials saved to file");
     }
 
+    logger.debug("Trying registry task")
     try {
         registerIblocks(); //Start the main register task
     } catch (err) { //If there's an error, catch it so we can write it to the log
-        logger.error(err, true);
+        logger.silentError(err);
         console.log("UNCAUGHT ERROR: \x1b[41mPlease report this on the project's GitHub!");
         throw(err); //Then throw it again to end the program
     }
