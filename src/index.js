@@ -257,7 +257,7 @@ async function changeClass(driver, date, day=-1) { //Open the block list
 
     let desired = desiredOrder(date, day); //Get the order of blocks to attempt to book
     if (desired.length < 1) { //If there are no blocks to try alert user and continue to next day
-        logger.forceWarn("Enrollment WARN: No enrollment instructions found for date= " + date + " on cycleDay= " + day)
+        logger.log("No enrollment instructions found for " + date + " on cycle day " + day)
         let okElement = await driver.findElement(By.xpath("//span[contains(., '"+"Ok"+"')]")) //Find the ok button
         await driver.wait(until.elementIsEnabled(okElement)); //Wait until ok button enabled
         await sleep(600); //Wait 0.6s for an element to stop blocking the ok button
@@ -271,12 +271,12 @@ async function changeClass(driver, date, day=-1) { //Open the block list
     let success = false;
     for (let v = 0; v < desired.length; v++) {
         let r = await blockSignup(driver, desired[v]); //Handle the block list popup
-        if (r == 1) { success = true; break; } //If the block was successully booked, end the function
+        if (r == 1) { success = true; logger.log(`Enrolled in ${v+1}º choice block with query ${desired[v].query} for ${date}`); break; } //If the block was successully booked, end the function
         //If block was full, alert the user and continue checking next priority blocks
-        else if (r == 0) { logger.warn("Enrollment WARN: Block with query= " + desired[v].query + " on date= " + date + " is full")}
+        else if (r == 0) { logger.log(`${v+1}º choice block with query '` + desired[v].query + "' for " + date + " is full")}
     }
     if (!success) { //If none of the blocks were successfully scheduled alert user and continue to next day
-        logger.error("Enrollment ERROR: Unable to enroll in any desired block for date= " + date + " on cycleDay= " + day );
+        logger.error("Enrollment ERROR: Unable to enroll in any desired block for " + date + " on cycle day " + day );
         await driver.wait(until.elementLocated(By.className("close-dialog"))); //Wait for find and click the close dialog button
         let closeElement = await driver.findElement(By.className("close-dialog")); //Find the close button
         await driver.wait(until.elementIsEnabled(closeElement)); //Wait until close button enabled

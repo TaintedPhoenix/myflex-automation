@@ -1,6 +1,6 @@
 {
   "name": "myflex-automation",
-  "version": "0.1.0-rc",
+  "version": "0.1.0",
   "description": "MyFlex enrollment automation using Selenium.",
   "main": "src/index.js",
   "scripts": {
