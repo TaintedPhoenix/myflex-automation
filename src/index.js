@@ -17,10 +17,6 @@ let email = process.env.EMAIL;
 let password = process.env.PASSWORD; //Load info from process.env
 let config = null;
 
-if (fs.existsSync("config.json5")) { //Load the config from file
-    config = await JSON5.parse(fs.readFileSync("config.json5"));
-}
-
 async function googleSignIn(driver) { //Navigate the google sign in popup (Username/Email section then Password Section)
     await driver.wait(until.elementLocated(By.name("identifier"))); //Wait until the username box is found
     let unElement = await driver.findElement(By.name("identifier")); //Locate the username box
@@ -493,7 +489,11 @@ async function registerIblocks() { //Main register task
 async function main() { //Config parsing and initialization
 
     logger.forceLog("Welcome to MyFlex Automation!");
-    logger.debug("Checking package file")
+    logger.debug("Loading config file");
+    if (fs.existsSync("config.json5")) { //Load the config from file
+        config = await JSON5.parse(fs.readFileSync("config.json5"));
+    }
+    logger.debug("Checking package file");
     if (fs.existsSync("package.json")) { //Ensure that the package file exists
         let data = await JSON.parse(fs.readFileSync("package.json")); //read the package file to get the version
         logger.forceLog(`Initializing program version ${Object.keys(data).includes("version") ? data.version : "unknown"}...\n`);
